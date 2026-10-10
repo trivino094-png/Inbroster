@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>El Juego del Impostor</title>
+<style>
+:root{
+  --card:#1a1d29;--card2:#232838;--accent:#ff4d4d;
+  --accent2:#4da3ff;--ok:#3ddc84;--txt:#f0f2f7;--muted:#8b93a7;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  margin:0;padding:16px;min-height:100vh;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:radial-gradient(circle at 50% 0%,#1b2033,#0b0d13 70%);
+  color:var(--txt);display:flex;align-items:center;justify-content:center;
+}
+.app{width:100%;max-width:440px;}
+h1{font-size:1.55rem;text-align:center;margin:0 0 4px;letter-spacing:-.5px;}
+h1 span{color:var(--accent);}
+.sub{text-align:center;color:var(--muted);font-size:.82rem;margin:0 0 22px;}
+.screen{display:none;animation:fade .25s ease;}
+.screen.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.field{margin-bottom:16px;}
+label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;
+  text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
+select{
+  width:100%;padding:14px;border-radius:12px;border:1px solid #2e3446;
+  background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238b93a7'><path d='M8 11L3 6h10z'/></svg>") no-repeat right 14px center;
+  color:var(--txt);font-size:1rem;appearance:none;padding-right:40px;
+}
+.btn{
+  width:100%;padding:16px;border:none;border-radius:14px;font-size:1rem;
+  font-weight:700;cursor:pointer;background:var(--accent2);color:#fff;
+  transition:transform .1s,opacity .15s;font-family:inherit;
+}
+.btn:active{transform:scale(.97);}
+.btn.primary{background:linear-gradient(135deg,#ff4d4d,#ff7a45);}
+.btn.ghost{background:var(--card2);color:var(--txt);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.row{display:flex;gap:10px;margin-top:10px;}
+.row .btn{flex:1;}
+.card{
+  position:relative;height:290px;border-radius:22px;
+  background:linear-gradient(160deg,#232838,#151822);
+  border:1px solid #2e3446;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:24px;margin-bottom:14px;user-select:none;
+  cursor:pointer;touch-action:manipulation;overflow:hidden;
+}
+.card .face{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.card .back{display:none;}
+.card.held .front{display:none;}
+.card.held .back{display:flex;}
+.card.held{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(77,163,255,.25);}
+.lock{font-size:3rem;}
+.hintp{color:var(--muted);font-size:.85rem;margin:0;line-height:1.5;}
+.wordTag{font-size:2.1rem;font-weight:800;letter-spacing:-1px;}
+.impTag{font-size:2.1rem;font-weight:800;color:var(--accent);letter-spacing:-1px;}
+.badge{display:inline-block;padding:4px 12px;border-radius:99px;background:var(--card2);
+  font-size:.78rem;color:var(--muted);margin-bottom:14px;}
+.badge b{color:var(--txt);}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.pbtn{padding:18px 8px;border-radius:14px;border:1px solid #2e3446;background:var(--card);
+  color:var(--txt);font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:transform .1s;}
+.pbtn:active{transform:scale(.96);}
+.pbtn.sel{background:var(--accent);border-color:var(--accent);}
+.timer{text-align:center;font-size:2.6rem;font-weight:800;font-variant-numeric:tabular-nums;
+  margin:12px 0;letter-spacing:1px;}
+.timer.low{color:var(--accent);}
+.big{text-align:center;font-size:3.4rem;margin:8px 0;}
+.resultTitle{text-align:center;font-size:1.5rem;font-weight:800;margin:0 0 6px;}
+.resultSub{text-align:center;color:var(--muted);font-size:.9rem;line-height:1.6;margin:0 0 20px;}
+.resultSub b{color:var(--txt);}
+.rules{background:var(--card);border:1px solid #2e3446;border-radius:14px;padding:14px 16px;
+  font-size:.82rem;color:var(--muted);line-height:1.7;margin-bottom:18px;}
+.
+  

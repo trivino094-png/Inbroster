@@ -76,5 +76,304 @@ select{
 .resultSub b{color:var(--txt);}
 .rules{background:var(--card);border:1px solid #2e3446;border-radius:14px;padding:14px 16px;
   font-size:.82rem;color:var(--muted);line-height:1.7;margin-bottom:18px;}
-.
-  
+.rules b{color:var(--txt);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <h1>El Juego del <span>Impostor</span></h1>
+  <p class="sub">Todos saben la palabra… menos uno.</p>
+
+  <!-- ===== CONFIGURACIÓN ===== -->
+  <div id="setup" class="screen active">
+    <div class="rules">
+      <b>Cómo se juega:</b><br>
+      1. Cada jugador ve su carta en secreto.<br>
+      2. Por turnos dan una pista sobre la palabra <b>sin decirla</b>.<br>
+      3. Debatan y voten quién es el impostor.<br>
+      4. Si aciertan, ganan los jugadores. Si no, gana el impostor.
+    </div>
+
+    <div class="field">
+      <label>Jugadores</label>
+      <select id="selJugadores"></select>
+    </div>
+    <div class="field">
+      <label>Impostores</label>
+      <select id="selImpostores"></select>
+    </div>
+    <div class="field">
+      <label>Categoría</label>
+      <select id="selCategoria"></select>
+    </div>
+
+    <button class="btn primary" onclick="comenzar()">Comenzar partida</button>
+  </div>
+
+  <!-- ===== REVELACIÓN ===== -->
+  <div id="reveal" class="screen">
+    <div class="badge" style="display:block;text-align:center">
+      Turno de <b id="revealNombre"></b> · <span id="revealProgreso"></span>
+    </div>
+    <div id="card" class="card">
+      <div class="face front">
+        <div class="lock">🔒</div>
+        <p class="hintp">Mantén presionado<br>para ver tu carta</p>
+      </div>
+      <div class="face back" id="cardContent"></div>
+    </div>
+    <button class="btn" id="btnSiguiente" onclick="siguienteJugador()">Ya la vi, siguiente</button>
+  </div>
+
+  <!-- ===== DISCUSIÓN ===== -->
+  <div id="discussion" class="screen">
+    <p class="sub" style="margin-bottom:10px">Ronda de pistas</p>
+    <div class="timer" id="timer">03:00</div>
+    <div class="row" style="margin-bottom:16px">
+      <button class="btn ghost" id="btnTimer" onclick="toggleTimer()">Iniciar</button>
+      <button class="btn ghost" onclick="resetTimer()">Reiniciar</button>
+    </div>
+    <p class="hintp" style="text-align:center;margin-bottom:18px">
+      Cada jugador dice una pista sobre la palabra.<br>El impostor debe disimular.
+    </p>
+    <button class="btn primary" onclick="irAVotar()">Ir a votación</button>
+  </div>
+
+  <!-- ===== VOTACIÓN ===== -->
+  <div id="vote" class="screen">
+    <p class="sub" style="margin-bottom:14px">¿Quién es el impostor?</p>
+    <div class="grid" id="voteGrid"></div>
+    <button class="btn primary" id="btnConfirmar" disabled onclick="confirmarVoto()">
+      Confirmar voto
+    </button>
+  </div>
+
+  <!-- ===== RESULTADO ===== -->
+  <div id="result" class="screen">
+    <div class="big" id="resEmoji"></div>
+    <p class="resultTitle" id="resTitulo"></p>
+    <p class="resultSub" id="resTexto"></p>
+    <button class="btn primary" onclick="otraRonda()">Jugar otra ronda</button>
+    <div class="row">
+      <button class="btn ghost" onclick="showScreen('setup')">Nueva partida</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================= DATOS ================= */
+const CATEGORIAS = {
+  Animales: ["Elefante","Tigre","Delfín","Pingüino","Jirafa","Cocodrilo","Murciélago","Pulpo","Camaleón","Koala","Ornitorrinco","Flamenco"],
+  Comidas: ["Pizza","Sushi","Tacos","Helado","Paella","Hamburguesa","Chocolate","Arepa","Ceviche","Ramen","Empanada","Tortilla"],
+  Lugares: ["Playa","Hospital","Aeropuerto","Biblioteca","Estadio","Museo","Selva","Desierto","Castillo","Mercado","Volcán","Faro"],
+  Objetos: ["Paraguas","Reloj","Espejo","Guitarra","Linterna","Telescopio","Brújula","Martillo","Cámara","Mochila","Ancla"],
+  Deportes: ["Fútbol","Baloncesto","Natación","Tenis","Boxeo","Ciclismo","Ajedrez","Surf","Esgrima","Gimnasia","Rugby","Karate"],
+  Profesiones: ["Bombero","Médico","Piloto","Chef","Astronauta","Profesor","Detective","Carpintero","Veterinario","Pintor","Juez","Buzo"]
+};
+
+/* ================= ESTADO ================= */
+let state = {
+  jugadores: [],
+  idx: 0,
+  categoria: "",
+  palabra: "",
+  voto: null
+};
+
+/* ================= UTILIDADES ================= */
+const $ = id => document.getElementById(id);
+const azar = arr => arr[Math.floor(Math.random() * arr.length)];
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ================= CONFIGURACIÓN ================= */
+function initSetup(){
+  const selJ = $('selJugadores');
+  selJ.innerHTML = '';
+  for(let i = 3; i <= 12; i++){
+    selJ.innerHTML += `<option value="${i}" ${i===4?'selected':''}>${i} jugadores</option>`;
+  }
+
+  const selC = $('selCategoria');
+  selC.innerHTML = '<option value="Aleatoria">🎲 Aleatoria</option>';
+  Object.keys(CATEGORIAS).forEach(c => {
+    selC.innerHTML += `<option value="${c}">${c}</option>`;
+  });
+
+  selJ.onchange = actualizarImpostores;
+  actualizarImpostores();
+}
+
+function actualizarImpostores(){
+  const n = +$('selJugadores').value;
+  const max = Math.max(1, Math.min(3, Math.floor(n / 3)));
+  const selI = $('selImpostores');
+  const previo = +selI.value || 1;
+  selI.innerHTML = '';
+  for(let i = 1; i <= max; i++){
+    selI.innerHTML += `<option value="${i}" ${i===previo?'selected':''}>${i} impostor${i>1?'es':''}</option>`;
+  }
+}
+
+/* ================= PARTIDA ================= */
+function comenzar(){
+  const n = +$('selJugadores').value;
+  const imp = +$('selImpostores').value;
+  const catSel = $('selCategoria').value;
+
+  state.categoria = catSel === 'Aleatoria' ? azar(Object.keys(CATEGORIAS)) : catSel;
+  state.palabra = azar(CATEGORIAS[state.categoria]);
+
+  // Repartir roles
+  let roles = Array(n).fill(false);
+  for(let i = 0; i < imp; i++) roles[i] = true;
+  roles.sort(() => Math.random() - 0.5);
+
+  state.jugadores = roles.map((esImp, i) => ({
+    nombre: `Jugador ${i + 1}`,
+    esImpostor: esImp
+  }));
+
+  state.idx = 0;
+  showScreen('reveal');
+  renderCarta();
+}
+
+/* ================= REVELACIÓN ================= */
+const cardEl = $('card');
+
+function renderCarta(){
+  const j = state.jugadores[state.idx];
+  $('revealNombre').textContent = j.nombre;
+  $('revealProgreso').textContent = `${state.idx + 1} / ${state.jugadores.length}`;
+
+  const c = $('cardContent');
+  if(j.esImpostor){
+    c.innerHTML = `
+      <div class="impTag">IMPOSTOR</div>
+      <p class="hintp">No sabes la palabra.<br>Pista: <b>${state.categoria}</b></p>`;
+  } else {
+    c.innerHTML = `
+      <div class="wordTag">${state.palabra}</div>
+      <p class="hintp">Categoría: <b>${state.categoria}</b></p>`;
+  }
+
+  cardEl.classList.remove('held');
+  $('btnSiguiente').textContent =
+    state.idx === state.jugadores.length - 1 ? 'Todos listos →' : 'Ya la vi, siguiente';
+}
+
+function mostrarCarta(e){ e.preventDefault(); cardEl.classList.add('held'); }
+function ocultarCarta(){ cardEl.classList.remove('held'); }
+
+cardEl.addEventListener('pointerdown', mostrarCarta);
+cardEl.addEventListener('pointerup', ocultarCarta);
+cardEl.addEventListener('pointercancel', ocultarCarta);
+cardEl.addEventListener('pointerleave', ocultarCarta);
+
+function siguienteJugador(){
+  state.idx++;
+  if(state.idx >= state.jugadores.length){
+    showScreen('discussion');
+    resetTimer();
+  } else {
+    renderCarta();
+  }
+}
+
+/* ================= TEMPORIZADOR ================= */
+let tiempo = 180, timerId = null;
+
+function pintarTimer(){
+  const m = String(Math.floor(tiempo / 60)).padStart(2,'0');
+  const s = String(tiempo % 60).padStart(2,'0');
+  $('timer').textContent = `${m}:${s}`;
+  $('timer').classList.toggle('low', tiempo <= 30);
+}
+
+function toggleTimer(){
+  if(timerId){
+    clearInterval(timerId); timerId = null;
+    $('btnTimer').textContent = 'Continuar';
+    return;
+  }
+  $('btnTimer').textContent = 'Pausar';
+  timerId = setInterval(() => {
+    if(tiempo > 0){
+      tiempo--; pintarTimer();
+    } else {
+      clearInterval(timerId); timerId = null;
+      $('btnTimer').textContent = 'Iniciar';
+    }
+  }, 1000);
+}
+
+function resetTimer(){
+  clearInterval(timerId); timerId = null;
+  tiempo = 180; pintarTimer();
+  $('btnTimer').textContent = 'Iniciar';
+}
+
+/* ================= VOTACIÓN ================= */
+function irAVotar(){
+  clearInterval(timerId); timerId = null;
+  state.voto = null;
+  const grid = $('voteGrid');
+  grid.innerHTML = '';
+  state.jugadores.forEach((j, i) => {
+    const b = document.createElement('button');
+    b.className = 'pbtn';
+    b.textContent = j.nombre;
+    b.onclick = () => {
+      state.voto = i;
+      document.querySelectorAll('.pbtn').forEach(x => x.classList.remove('sel'));
+      b.classList.add('sel');
+      $('btnConfirmar').disabled = false;
+    };
+    grid.appendChild(b);
+  });
+  $('btnConfirmar').disabled = true;
+  showScreen('vote');
+}
+
+function confirmarVoto(){
+  const acusado = state.jugadores[state.voto];
+  const impostores = state.jugadores.filter(j => j.esImpostor);
+  const nombresImp = impostores.map(j => j.nombre).join(', ');
+  const ganoJugadores = acusado.esImpostor;
+
+  $('resEmoji').textContent = ganoJugadores ? '🎉' : '🕵️';
+  $('resTitulo').textContent = ganoJugadores ? '¡Ganan los jugadores!' : '¡Gana el impostor!';
+  $('resTitulo').style.color = ganoJugadores ? 'var(--ok)' : 'var(--accent)';
+
+  $('resTexto').innerHTML = `
+    Acusaron a <b>${acusado.nombre}</b>.<br>
+    Impostor${impostores.length > 1 ? 'es' : ''}: <b>${nombresImp}</b><br>
+    La palabra era: <b>${state.palabra}</b> (${state.categoria})`;
+
+  showScreen('result');
+}
+
+/* ================= REINICIO ================= */
+function otraRonda(){
+  state.palabra = azar(CATEGORIAS[state.categoria]);
+  let roles = state.jugadores.map(j => j.esImpostor);
+  roles.sort(() => Math.random() - 0.5);
+  state.jugadores.forEach((j, i) => j.esImpostor = roles[i]);
+
+  state.idx = 0;
+  showScreen('reveal');
+  renderCarta();
+}
+
+/* ================= ARRANQUE ================= */
+initSetup();
+</script>
+</body>
+</html>
